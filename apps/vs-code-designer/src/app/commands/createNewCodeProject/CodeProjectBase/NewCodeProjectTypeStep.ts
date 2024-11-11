@@ -170,9 +170,15 @@ export class NewCodeProjectTypeStep extends AzureWizardPromptStep<IProjectWizard
     // Start with an empty folders array
     const workspaceFolders = [];
 
-    // Add Functions folder first if it's a custom code code Logic App
+    // Add Functions folder first if it's a custom code Logic App & disable .sln file generation
     if (context.isWorkspaceWithFunctions) {
-      workspaceFolders.push({ name: 'Functions', path: './Function' });
+      workspaceFolders.push({
+        name: 'Functions',
+        path: './Function',
+        settings: {
+          'dotnet.automaticallyCreateSolutionInWorkspace': false,
+        },
+      });
     }
 
     // Use context.logicAppName for the folder name; default to 'LogicApp' if not available
