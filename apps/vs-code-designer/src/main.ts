@@ -35,7 +35,7 @@ const perfStats = {
   loadEndTime: undefined,
 };
 
-const telemetryString = 'ea2dcb5c-9844-42a0-88d9-ccf831efefe6';
+const telemetryString = '3cf0d6ae-3327-414a-b7c1-12f31ef45eff';
 
 export async function activate(context: vscode.ExtensionContext) {
   vscode.commands.executeCommand(
