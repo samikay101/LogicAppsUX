@@ -2,7 +2,7 @@
   "name": "vscode-azurelogicapps",
   "displayName": "Azure Logic Apps (Standard)",
   "version": "5.21.0",
-  "aiKey": "setInGitHubBuild",
+  "aiKey": "ea2dcb5c-9844-42a0-88d9-ccf831efefe6",
   "repository": "https://github.com/Azure/LogicAppsUX",
   "main": "main.js",
   "engines": {

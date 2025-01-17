@@ -100,6 +100,7 @@
   },
   "type": "module",
   "dependencies": {
+    "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "find-process": "^1.4.7",
     "fs-extra": "^11.2.0",

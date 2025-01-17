@@ -28,13 +28,14 @@ import {
 import type { IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import TelemetryReporter from '@vscode/extension-telemetry';
+import { localize } from './localize';
 
 const perfStats = {
   loadStartTime: Date.now(),
   loadEndTime: undefined,
 };
 
-const telemetryString = 'setInGitHubBuild';
+const telemetryString = 'ea2dcb5c-9844-42a0-88d9-ccf831efefe6';
 
 export async function activate(context: vscode.ExtensionContext) {
   vscode.commands.executeCommand(
@@ -79,6 +80,9 @@ export async function activate(context: vscode.ExtensionContext) {
     ext.currentBundleVersion = activateContext.telemetry.properties.latestBundleVersion;
     ext.latestBundleVersion = activateContext.telemetry.properties.latestBundleVersion;
 
+    // Now log them to telemetry and the output channel:
+    await logExtensionAndBundleVersions(activateContext);
+
     ext.rgApi = await getResourceGroupsApi();
     // @ts-ignore
     ext.azureAccountTreeItem = ext.rgApi.appResourceTree._rootTreeItem as AzureAccountTreeItemWithProjects;
@@ -121,3 +125,26 @@ export function deactivate(): Promise<any> {
 }
 
 perfStats.loadEndTime = Date.now();
+
+/**
+ * Logs the current extension version, bundle versions, and VS Code version
+ * @param {IActionContext} context - The context object, giving access to telemetry.
+ */
+export async function logExtensionAndBundleVersions(context: IActionContext): Promise<void> {
+  // Set basic telemetry properties here, so they’re available before the API call
+  context.telemetry.properties.extensionVersion = ext.extensionVersion || 'unknown';
+  context.telemetry.properties.currentBundleVersion = ext.currentBundleVersion || 'unknown';
+  context.telemetry.properties.latestBundleVersion = ext.latestBundleVersion || 'unknown';
+  context.telemetry.properties.vsCodeVersion = vscode.version;
+
+  // Wrap the logic in callWithTelemetryAndErrorHandling to ensure telemetry is captured consistently
+  await callWithTelemetryAndErrorHandling('logicApp.logInstalledVersions', async (telemetryContext: IActionContext) => {
+    // Merge the local context (including telemetry) into the callback’s IActionContext
+    Object.assign(telemetryContext, context);
+
+    ext.outputChannel.appendLog(localize('logExtensionVersion', 'Extension Version: {0}', ext.extensionVersion));
+    ext.outputChannel.appendLog(localize('logCurrentBundleVersion', 'Current Bundle Version: {0}', ext.currentBundleVersion));
+    ext.outputChannel.appendLog(localize('logLatestBundleVersion', 'Latest Bundle Version: {0}', ext.latestBundleVersion));
+    ext.outputChannel.appendLog(localize('logVSCodeVersion', 'VS Code Version: {0}', vscode.version));
+  });
+}
