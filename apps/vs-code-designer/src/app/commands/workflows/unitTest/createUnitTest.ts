@@ -98,7 +98,6 @@ async function generateCodefulUnitTest(
     context.telemetry.properties.runtimePort = ext.workflowRuntimePort?.toString();
 
     const baseUrl = `http://localhost:${ext.workflowRuntimePort}`;
-
     const apiUrl = `${baseUrl}/runtime/webhooks/workflow/api/management/workflows/${encodeURIComponent(
       workflowName
     )}/runs/${encodeURIComponent(runId)}/generateUnitTest`;
@@ -129,6 +128,7 @@ async function generateCodefulUnitTest(
     });
 
     ext.outputChannel.appendLog(localize('apiCallSuccessful', 'API call successful, processing response...'));
+    context.telemetry.properties.processStage = 'API Call Completed';
 
     const zipBuffer = Buffer.from(response.data);
 
@@ -155,7 +155,7 @@ async function generateCodefulUnitTest(
     await unzipLogicAppArtifacts(zipBuffer, unitTestFolderPath);
 
     ext.outputChannel.appendLog(localize('filesUnzipped', 'Files successfully unzipped.'));
-    context.telemetry.properties.processStage = 'Files unzipped';
+    context.telemetry.properties.processStage = 'Files Unzipped';
     await createCsFile(unitTestFolderPath, unitTestName, workflowName, logicAppName);
 
     // Generate the .csproj file if it doesn't exist
@@ -183,31 +183,30 @@ async function generateCodefulUnitTest(
       FileManagement.addFolderToWorkspace(testsDirectory);
     }
     context.telemetry.properties.unitTestGenerationStatus = 'Success';
-  } catch (error) {
+  } catch (error: any) {
     context.telemetry.properties.unitTestGenerationStatus = 'Failed';
 
-    if (error.code) {
-      context.telemetry.properties.networkErrorCode = error.code;
+    // eslint-disable-next-line import/no-named-as-default-member
+    if (axios.isAxiosError(error)) {
+      // Log HTTP error details for telemetry and debugging
+      context.telemetry.properties.apiCallFailureStatus = error.response?.status?.toString() || 'Unknown';
+      context.telemetry.properties.apiCallFailureMessage = error.response?.statusText || 'Unknown Error';
+      context.telemetry.properties.apiCallFailureData = JSON.stringify(error.response?.data || {});
+
+      ext.outputChannel.appendLog(
+        localize(
+          'apiCallFailed',
+          'API call failed with status: {0}, message: {1}, response: {2}',
+          error.response?.status,
+          error.response?.statusText,
+          JSON.stringify(error.response?.data || {})
+        )
+      );
     }
 
-    // Handle errors and parse error response if available
-    let errorMessage: string;
-    // eslint-disable-next-line import/no-named-as-default-member
-    if (axios.isAxiosError(error) && error.response?.data) {
-      try {
-        const responseData = JSON.parse(new TextDecoder().decode(error.response.data));
-        const { message = '', code = '' } = responseData?.error ?? {};
-        errorMessage = localize('apiError', `API Error: ${code} - ${message}`);
-        ext.outputChannel.appendLog(errorMessage);
-      } catch (parseError) {
-        errorMessage = error.message;
-      }
-    } else if (error instanceof Error) {
-      errorMessage = error.message;
-    } else {
-      errorMessage = String(error);
-    }
-    context.telemetry.properties.error = errorMessage;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    context.telemetry.properties.errorMessage = errorMessage;
+
     const errorDisplayMessage = localize('error.generateCodefulUnitTest', 'Failed to generate codeful unit test: {0}', errorMessage);
     vscode.window.showErrorMessage(errorDisplayMessage);
     ext.outputChannel.appendLog(errorDisplayMessage);
