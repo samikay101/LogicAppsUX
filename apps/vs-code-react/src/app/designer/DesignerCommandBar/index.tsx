@@ -279,17 +279,6 @@ export const DesignerCommandBar: React.FC<DesignerCommandBarProps> = ({
               onCreateUnitTest();
             },
           },
-          {
-            key: 'SaveBlank',
-            disabled: isDisabled,
-            text: Resources.UNIT_TEST_SAVE_BLANK,
-            ariaLabel: Resources.UNIT_TEST_SAVE_BLANK,
-            icon: isSavingBlankUnitTest ? <Spinner size="extra-small" /> : <SaveRegular />,
-            renderTextIcon: null,
-            onClick: () => {
-              saveBlankUnitTestMutate();
-            },
-          },
         ]
       : []),
   ];
