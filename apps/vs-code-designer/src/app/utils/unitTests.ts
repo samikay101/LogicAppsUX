@@ -1233,3 +1233,44 @@ export async function isMockable(type: string): Promise<boolean> {
   }
   return false;
 }
+
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+/**
+ * Creates a new solution file and adds the specified Logic App .csproj to it.
+ *
+ * This function performs the following steps in the tests directory:
+ * 1. Runs 'dotnet new sln -n Tests' to create a new solution file named Tests.sln.
+ * 2. Computes the relative path from the tests directory to the Logic App .csproj.
+ * 3. Runs 'dotnet sln Tests.sln add <relativePath>' to add the project to the solution.
+ *
+ * @param testsDirectory - The absolute path to the tests directory root.
+ * @param logicAppCsprojPath - The absolute path to the Logic App's .csproj file.
+ */
+export async function updateSolutionWithProject(testsDirectory: string, logicAppCsprojPath: string): Promise<void> {
+  const solutionName = 'Tests'; // This will create "Tests.sln"
+  const solutionFile = path.join(testsDirectory, `${solutionName}.sln`);
+
+  try {
+    // Create a new solution file if it doesn't already exist.
+    if (await fse.pathExists(solutionFile)) {
+      ext.outputChannel.appendLog(`Solution file already exists at ${solutionFile}.`);
+    } else {
+      ext.outputChannel.appendLog(`Creating new solution file at ${solutionFile}...`);
+      await execAsync(`dotnet new sln -n ${solutionName}`, { cwd: testsDirectory });
+      ext.outputChannel.appendLog(`Solution file created: ${solutionFile}`);
+    }
+
+    // Compute the relative path from the tests directory to the Logic App .csproj.
+    const relativeProjectPath = path.relative(testsDirectory, logicAppCsprojPath);
+    ext.outputChannel.appendLog(`Adding project '${relativeProjectPath}' to solution '${solutionFile}'...`);
+    await execAsync(`dotnet sln "${solutionFile}" add "${relativeProjectPath}"`, { cwd: testsDirectory });
+    ext.outputChannel.appendLog('Project added to solution successfully.');
+  } catch (err) {
+    ext.outputChannel.appendLog(`Error updating solution: ${err}`);
+    vscode.window.showErrorMessage(`Error updating solution: ${err}`);
+  }
+}
