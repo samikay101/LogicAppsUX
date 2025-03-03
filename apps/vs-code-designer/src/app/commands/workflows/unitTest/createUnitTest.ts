@@ -203,10 +203,16 @@ async function generateUnitTestFromRun(
       workflowName,
       paths.logicAppName
     );
+
+    // Get cleaned versions of strings
+    const cleanedUnitTestName = unitTestName.replace(/-/g, '_');
+    const cleanedWorkflowName = workflowName.replace(/-/g, '_');
+    const cleanedLogicAppName = paths.logicAppName.replace(/-/g, '_');
+
     // Create the testSettings.config file for the unit test
     ext.outputChannel.appendLog(localize('creatingTestSettingsConfig', 'Creating testSettings.config file for unit test...'));
     await createTestSettingsConfigFile(paths.workflowTestFolderPath, workflowName, paths.logicAppName);
-    await createTestExecutorFile(paths.logicAppTestFolderPath, paths.logicAppName);
+    await createTestExecutorFile(paths.logicAppTestFolderPath, cleanedLogicAppName);
 
     try {
       ext.outputChannel.appendLog(localize('unzippingFiles', `Unzipping Mock.json into: ${paths.unitTestFolderPath}`));
@@ -231,8 +237,11 @@ async function generateUnitTestFromRun(
       await createCsFile(
         paths.unitTestFolderPath!,
         unitTestName,
+        cleanedUnitTestName,
         workflowName,
+        cleanedWorkflowName,
         paths.logicAppName,
+        cleanedLogicAppName,
         actionName,
         actionOutputClassName,
         actionMockClassName,
