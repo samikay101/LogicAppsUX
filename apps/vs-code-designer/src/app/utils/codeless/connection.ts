@@ -595,32 +595,49 @@ async function updateConnectionReferencesWithMSI(
   azureTenantId: string,
   workflowBaseManagementUri: string
 ): Promise<any> {
-  const accessToken = await getAuthorizationToken(azureTenantId);
+  // TODO: Add a try catch block here to log errors and continue processing other connections if one fails
+  let accessToken: string;
+  try {
+    accessToken = await getAuthorizationToken(azureTenantId);
+  } catch (err) {
+    context.telemetry.properties.updateConnectionReferencesWithMSI_error = `Failed to acquire access token: ${String(err)}`;
+    throw err;
+  }
 
   // Extract user identity from token
-
-  //TODO reterive both object ID and tenant ID from token instead of passing tenant ID as parameter
+  // TODO reterive both object ID and tenant ID from token instead of passing tenant ID as parameter
   const jwtHelper = JwtTokenHelper.createInstance();
   const tokenPayload = jwtHelper.extractJwtTokenPayload(accessToken);
   const objectId = tokenPayload?.oid || tokenPayload?.sub;
   const tenantId = tokenPayload?.tid;
 
   if (!objectId || !tenantId) {
-    throw new Error('Unable to retrieve user identity from token');
+    const errMsg = 'Unable to retrieve user identity from token';
+    context.telemetry.properties.updateConnectionReferencesWithMSI_error = errMsg;
+    throw new Error(errMsg);
   }
 
   const updatedReferences: any = {};
 
   for (const [referenceKey, reference] of Object.entries(connectionReferences)) {
-    if (reference?.authentication?.type === 'ManagedServiceIdentity' && reference?.connection?.id?.startsWith('/subscriptions/')) {
-      const connectionId = reference.connection.id;
+    try {
+      if (reference?.authentication?.type === 'ManagedServiceIdentity' && reference?.connection?.id?.startsWith('/subscriptions/')) {
+        const connectionId = reference.connection.id;
 
-      // Check and create access policy
-      await ensureAccessPolicy(connectionId, objectId, azureTenantId, accessToken, workflowBaseManagementUri);
+        // Check and create access policy
+        await ensureAccessPolicy(connectionId, objectId, azureTenantId, accessToken, workflowBaseManagementUri);
 
-      // Update reference - keep existing structure but ensure runtime URL
-      updatedReferences[referenceKey] = reference;
-    } else {
+        // Update reference - keep existing structure but ensure runtime URL
+        updatedReferences[referenceKey] = reference;
+        context.telemetry.properties[`msiUpdate_${referenceKey}`] = 'success';
+      } else {
+        updatedReferences[referenceKey] = reference;
+      }
+    } catch (err) {
+      // Log and continue processing other connections
+      console.error(`Error updating MSI for connection reference "${referenceKey}":`, err);
+      context.telemetry.properties[`msiUpdateError_${referenceKey}`] = String(err).slice(0, 200);
+      // keep original reference so caller has the unmodified value
       updatedReferences[referenceKey] = reference;
     }
   }
